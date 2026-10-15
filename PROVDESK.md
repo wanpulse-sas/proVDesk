@@ -5,7 +5,7 @@ ProVDesk application name and enforced WebSocket transport. The original
 copyright notices and AGPL-3.0 license in LICENCE are retained; the license and
 its warranty disclaimer apply to this modified version.
 
-Public source: https://github.com/guipik/rustdesk
+Public source: https://github.com/wanpulse-sas/proVDesk
 The ProVDesk About page offers this source link.
 
 ## Network configuration
