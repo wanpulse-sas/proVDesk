@@ -3,7 +3,7 @@ param(
 		[string]$AppName = 'ProVDesk',
 
 		[Parameter(Mandatory = $false)]
-		[string]$EditorName = 'WanPulse SAS',
+		[string]$EditorName = 'WanPulse',
 
 		[Parameter(Mandatory = $false)]
 		[string]$OutputDir = 'artifacts\ProVDesk',

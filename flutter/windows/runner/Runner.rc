@@ -89,7 +89,7 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "WanPulse SAS" "\0"
+            VALUE "CompanyName", "WanPulse" "\0"
             VALUE "FileDescription", "ProVDesk Remote Desktop" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "ProVDesk" "\0"

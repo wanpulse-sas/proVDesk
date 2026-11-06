@@ -1085,7 +1085,12 @@ pub fn is_rustdesk() -> bool {
 
 #[inline]
 pub fn get_uri_prefix() -> String {
-    format!("{}://", get_app_name().to_lowercase())
+    uri_prefix_for_app(&get_app_name())
+}
+
+fn uri_prefix_for_app(app_name: &str) -> String {
+    let scheme = if app_name == "ProVDesk" { "rustdesk" } else { app_name };
+    format!("{}://", scheme.to_lowercase())
 }
 
 #[cfg(target_os = "macos")]
@@ -1153,6 +1158,9 @@ fn get_api_server_(api: String, custom: String) -> String {
         } else {
             return format!("http://{}", s);
         }
+    }
+    if option_env!("RUSTDESK_APP_NAME") == Some("ProVDesk") {
+        return String::new();
     }
     "https://admin.rustdesk.com".to_owned()
 }
@@ -2955,6 +2963,13 @@ pub fn is_valid_untrusted_peer_id(id: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn provdesk_uses_the_standard_uri_scheme_without_changing_other_brands() {
+        assert_eq!(super::uri_prefix_for_app("ProVDesk"), "rustdesk://");
+        assert_eq!(super::uri_prefix_for_app("RustDesk"), "rustdesk://");
+        assert_eq!(super::uri_prefix_for_app("OtherBrand"), "otherbrand://");
+    }
+
     use super::*;
     use hbb_common::tokio::{
         self,

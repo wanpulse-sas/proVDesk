@@ -2571,7 +2571,7 @@ class _AboutState extends State<_About> {
               if (appName == 'ProVDesk')
                 InkWell(
                     onTap: () {
-                      launchUrlString('https://github.com/wanpulse-sas/proVDesk/releases/tag/provdesk-1.5.0-20261015-wss');
+                      launchUrlString('https://github.com/wanpulse-sas/proVDesk/releases/tag/provdesk-1.5.0-20261106-wanpulse-path');
                     },
                     child: const Text('ProVDesk source (AGPL-3.0)',
                             style: linkStyle)

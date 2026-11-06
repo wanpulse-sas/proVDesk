@@ -1405,6 +1405,9 @@ fn get_default_install_path() -> String {
             pf = tmp;
         }
     }
+    if crate::get_app_name() == "ProVDesk" {
+        pf.push_str("\\WanPulse");
+    }
     format!("{}\\{}", pf, crate::get_app_name())
 }
 
@@ -1524,6 +1527,36 @@ pub fn remove_meta_toml_cmd(is_msi: bool, path: &str) -> String {
     }
 }
 
+fn get_provdesk_uri_registration(app_name: &str, exe: &str) -> String {
+    if app_name != "ProVDesk" {
+        return String::new();
+    }
+    let nested_exe = escape_nested_cmd_ampersands(exe);
+    format!(
+        "
+    reg add HKEY_CLASSES_ROOT\\rustdesk /f
+    reg add HKEY_CLASSES_ROOT\\rustdesk /f /v \"URL Protocol\" /t REG_SZ /d \"\"
+    reg add HKEY_CLASSES_ROOT\\rustdesk\\shell\\open\\command /f /ve /t REG_SZ /d \"\\\"{nested_exe}\\\" \\\"%%1\\\"\"
+    "
+    )
+}
+
+fn get_provdesk_uri_cleanup() -> String {
+    if crate::get_app_name() != "ProVDesk" {
+        return String::new();
+    }
+    let (_, _, _, exe) = get_install_info();
+    let command = RegKey::predef(HKEY_CLASSES_ROOT)
+        .open_subkey(r"rustdesk\shell\open\command")
+        .and_then(|key| key.get_value::<String, _>(""));
+    match command {
+        Ok(value) if value.eq_ignore_ascii_case(&format!("\"{exe}\" \"%1\"")) => {
+            "reg delete HKEY_CLASSES_ROOT\\rustdesk /f".to_owned()
+        }
+        _ => String::new(),
+    }
+}
+
 fn get_after_install(
     exe: &str,
     reg_value_start_menu_shortcuts: Option<String>,
@@ -1579,11 +1612,13 @@ fn get_after_install(
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open /f
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f /ve /t REG_SZ /d \"\\\"{nested_exe}\\\" \\\"%%1\\\"\"
+    {provdesk_uri_registration}
     netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=out action=allow program=\"{exe}\" enable=yes
     netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=in action=allow program=\"{exe}\" enable=yes
     {create_service}
     reg add HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /f /v SoftwareSASGeneration /t REG_DWORD /d 1
-    ", create_service=get_create_service(&exe))
+    ", create_service=get_create_service(&exe),
+        provdesk_uri_registration=get_provdesk_uri_registration(&app_name, exe))
 }
 
 pub fn install_me(options: &str, path: String, silent: bool, debug: bool) -> ResultType<()> {
@@ -1809,9 +1844,11 @@ fn get_before_uninstall(kill_self: bool) -> String {
     taskkill /F /IM {app_name}.exe{filter}
     reg delete HKEY_CLASSES_ROOT\\.{ext} /f
     reg delete HKEY_CLASSES_ROOT\\{ext} /f
+    {provdesk_uri_cleanup}
     netsh advfirewall firewall delete rule name=\"{app_name} Service\"
     ",
         broker_exe = WIN_TOPMOST_INJECTED_PROCESS_EXE,
+        provdesk_uri_cleanup = get_provdesk_uri_cleanup(),
     )
 }
 
@@ -4755,6 +4792,14 @@ pub(super) fn get_pids_with_first_arg_by_wmic<S1: AsRef<str>, S2: AsRef<str>>(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn provdesk_installer_registers_the_shared_protocol_only_for_provdesk() {
+        let commands = super::get_provdesk_uri_registration("ProVDesk", r"C:\Program Files\ProVDesk\ProVDesk.exe");
+        assert!(commands.contains(r"HKEY_CLASSES_ROOT\rustdesk\shell\open\command"));
+        assert!(commands.contains("ProVDesk.exe"));
+        assert!(super::get_provdesk_uri_registration("RustDesk", "rustdesk.exe").is_empty());
+    }
+
     use super::*;
 
     // Test-only reusable Win32 HANDLE RAII helper.

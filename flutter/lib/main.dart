@@ -133,6 +133,10 @@ Future<void> initEnv(String appType) async {
 void runMainApp(bool startService) async {
   // register uni links
   await initEnv(kAppTypeMain);
+  if (isWindows && appName == 'ProVDesk' && !bind.mainIsInstalled()) {
+    runInstallPage(initialize: false);
+    return;
+  }
   checkUpdate();
   // trigger connection status updater
   await bind.mainCheckConnectStatus();
@@ -384,9 +388,9 @@ void _runApp(
   ));
 }
 
-void runInstallPage() async {
+void runInstallPage({bool initialize = true}) async {
   await windowManager.ensureInitialized();
-  await initEnv(kAppTypeMain);
+  if (initialize) await initEnv(kAppTypeMain);
   _runApp('', const InstallPage(), MyTheme.currentThemeMode());
   WindowOptions windowOptions =
       getHiddenTitleBarWindowOptions(size: Size(800, 600), center: true);
