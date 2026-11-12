@@ -501,3 +501,26 @@ par les variables Bitbucket et la configuration du runner ; les secrets ne sont
 pas versionnés. Vérifier l'égalité des commits des deux dépôts avant de lancer
 un pipeline. Les workflows GitHub Actions ne sont pas nécessaires à ce circuit.
 
+## Envoyer une branche vers GitHub et Bitbucket
+
+Un seul clone local suffit. Configurer un remote `publish` avec deux destinations
+de push, en remplaçant les URL d'exemple par celles des dépôts :
+
+```powershell
+git remote add publish <URL_GITHUB>
+git remote set-url --add --push publish <URL_GITHUB>
+git remote set-url --add --push publish <URL_BITBUCKET>
+```
+
+Après modification et commit, `git push publish HEAD` envoie la branche courante
+aux deux dépôts. Pour limiter `git push publish` à une branche précise, configurer
+`remote.publish.push` avec `refs/heads/<branche>:refs/heads/<branche>`.
+Cette configuration est locale au clone et nécessite les droits d'écriture sur
+les deux services. Les deux envois ne sont pas atomiques : en cas d'échec partiel,
+comparer les SHA avec `git ls-remote <URL> refs/heads/<branche>`, puis terminer
+l'envoi manquant sans forcer une divergence. Récupérer localement les changements
+faits directement sur un site avant de pousser.
+
+Pour `master`, pousser sur GitHub avant Bitbucket : le push Bitbucket lance
+automatiquement le build et la publication, et master sur GitHub doit déjà
+correspondre au commit construit.
