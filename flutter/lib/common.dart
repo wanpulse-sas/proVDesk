@@ -2252,13 +2252,17 @@ setEnvTerminalAdmin() {
   bind.mainSetEnv(key: 'IS_TERMINAL_ADMIN', value: 'Y');
 }
 
+bool isAppUri(String url) {
+  return url.startsWith(bind.mainUriPrefixSync());
+}
+
 // uri link handler
 bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
   List<String>? args;
   if (cmdArgs != null && cmdArgs.isNotEmpty) {
     args = cmdArgs;
     // rustdesk <uri link>
-    if (args[0].startsWith(bind.mainUriPrefixSync())) {
+    if (isAppUri(args[0])) {
       final uri = Uri.tryParse(args[0]);
       if (uri != null) {
         args = urlLinkToCmdArgs(uri);
@@ -2389,6 +2393,9 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
 }
 
 List<String>? urlLinkToCmdArgs(Uri uri) {
+  if (appName == 'ProVDesk' && uri.scheme != 'provdesk') {
+    return null;
+  }
   String? command;
   String? id;
   final options = [

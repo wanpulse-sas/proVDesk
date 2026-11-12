@@ -1,0 +1,103 @@
+diff --git a/build.rs b/build.rs
+index 43e3282..b2340ce 100644
+--- a/build.rs
++++ b/build.rs
+@@ -1,4 +1,7 @@
+ fn main() {
++    println!("cargo:rerun-if-env-changed=RUSTDESK_APP_NAME");
++    println!("cargo:rerun-if-env-changed=RUSTDESK_FORCE_WEBSOCKET");
++
+     let out_dir = format!("{}/protos", std::env::var("OUT_DIR").unwrap());
+ 
+     std::fs::create_dir_all(&out_dir).unwrap();
+diff --git a/src/config.rs b/src/config.rs
+index 6fe1004..4bf6481 100644
+--- a/src/config.rs
++++ b/src/config.rs
+@@ -69,7 +69,11 @@ lazy_static::lazy_static! {
+     static ref ONLINE: Mutex<HashMap<String, i64>> = Default::default();
+     pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new("".to_owned());
+     pub static ref EXE_RENDEZVOUS_SERVER: RwLock<String> = Default::default();
+-    pub static ref APP_NAME: RwLock<String> = RwLock::new("RustDesk".to_owned());
++    pub static ref APP_NAME: RwLock<String> = RwLock::new(
++        option_env!("RUSTDESK_APP_NAME")
++            .unwrap_or("RustDesk")
++            .to_owned()
++    );
+     static ref KEY_PAIR: Mutex<Option<KeyPair>> = Default::default();
+     static ref USER_DEFAULT_CONFIG: RwLock<(UserDefaultConfig, Instant)> = RwLock::new((UserDefaultConfig::load(), Instant::now()));
+     pub static ref NEW_STORED_PEER_CONFIG: Mutex<HashSet<String>> = Default::default();
+@@ -915,6 +919,9 @@ impl Config {
+         if rendezvous_server.is_empty() {
+             rendezvous_server = PROD_RENDEZVOUS_SERVER.read().unwrap().clone();
+         }
++        if rendezvous_server.is_empty() && option_env!("RUSTDESK_APP_NAME") == Some("ProVDesk") {
++            return String::new();
++        }
+         if rendezvous_server.is_empty() {
+             rendezvous_server = CONFIG2.read().unwrap().rendezvous_server.clone();
+         }
+@@ -943,6 +950,9 @@ impl Config {
+         if !s.is_empty() {
+             return vec![s];
+         }
++        if option_env!("RUSTDESK_APP_NAME") == Some("ProVDesk") {
++            return Vec::new();
++        }
+         let serial_obsolute = CONFIG2.read().unwrap().serial > SERIAL;
+         if serial_obsolute {
+             let ss: Vec<String> = Self::get_option("rendezvous-servers")
+@@ -3005,6 +3015,24 @@ mod tests {
+         test()
+     }
+ 
++    #[test]
++    fn test_provdesk_requires_configured_rendezvous_server() {
++        if option_env!("RUSTDESK_APP_NAME") != Some("ProVDesk") { return; }
++        let _guard = CONFIG_STATE_TEST_LOCK.lock().unwrap();
++        let original = Config2::get();
++        let mut cached = Config2::default();
++        cached.rendezvous_server = "rs-ny.rustdesk.com".to_owned();
++        cached.serial = SERIAL + 1;
++        cached.options.insert("rendezvous-servers".to_owned(), "rs-ny.rustdesk.com".to_owned());
++        *CONFIG2.write().unwrap() = cached;
++        assert!(Config::get_rendezvous_server().is_empty());
++        assert!(Config::get_rendezvous_servers().is_empty());
++        CONFIG2.write().unwrap().options.insert("custom-rendezvous-server".to_owned(), "selfhost.invalid".to_owned());
++        assert_eq!(Config::get_rendezvous_server(), "selfhost.invalid:21116");
++        assert_eq!(Config::get_rendezvous_servers(), vec!["selfhost.invalid"]);
++        *CONFIG2.write().unwrap() = original;
++    }
++
+     #[test]
+     fn test_serialize() {
+         let cfg: Config = Default::default();
+diff --git a/src/websocket.rs b/src/websocket.rs
+index 6c50625..d762753 100644
+--- a/src/websocket.rs
++++ b/src/websocket.rs
+@@ -423,7 +423,9 @@ pub fn check_ws(endpoint: &str) -> String {
+     };
+     let protocol = if is_domain {
+         let api_server = Config::get_option("api-server");
+-        if api_server.starts_with("https") {
++        if option_env!("RUSTDESK_FORCE_WEBSOCKET") == Some("Y")
++            || api_server.starts_with("https")
++        {
+             "wss"
+         } else {
+             "ws"
+@@ -480,9 +482,10 @@ mod tests {
+         assert_eq!(check_ws("127.0.0.1:21115"), "ws://127.0.0.1:21118");
+         assert_eq!(check_ws("127.0.0.1:21116"), "ws://127.0.0.1:21118");
+         assert_eq!(check_ws("127.0.0.1:21117"), "ws://127.0.0.1:21119");
+-        assert_eq!(check_ws("rustdesk.com:21115"), "ws://rustdesk.com/ws/id");
+-        assert_eq!(check_ws("rustdesk.com:21116"), "ws://rustdesk.com/ws/id");
+-        assert_eq!(check_ws("rustdesk.com:21117"), "ws://rustdesk.com/ws/relay");
++        let protocol = if option_env!("RUSTDESK_FORCE_WEBSOCKET") == Some("Y") { "wss" } else { "ws" };
++        assert_eq!(check_ws("rustdesk.com:21115"), format!("{protocol}://rustdesk.com/ws/id"));
++        assert_eq!(check_ws("rustdesk.com:21116"), format!("{protocol}://rustdesk.com/ws/id"));
++        assert_eq!(check_ws("rustdesk.com:21117"), format!("{protocol}://rustdesk.com/ws/relay"));
+         // set relay-server without port
+         Config::set_option("relay-server".to_string(), "127.0.0.1".to_string());
+         Config::set_option(

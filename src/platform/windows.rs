@@ -126,6 +126,10 @@ const MSI_WINDOWS_INSTALLER_VALUE: u32 = 1;
 const MSI_EXIT_SUCCESS_REBOOT_INITIATED: u32 = 1641;
 const MSI_EXIT_SUCCESS_REBOOT_REQUIRED: u32 = 3010;
 const HKLM_PREFIX: &str = "HKEY_LOCAL_MACHINE\\";
+const EDITOR_NAME: &str = match option_env!("RUSTDESK_EDITOR_NAME") {
+    Some(name) => name,
+    None => "Purslane Tech Pte. Ltd.",
+};
 
 fn validate_install_app_name(app_name: &str) -> ResultType<()> {
     if app_name.is_empty()
@@ -1401,6 +1405,9 @@ fn get_default_install_path() -> String {
             pf = tmp;
         }
     }
+    if crate::get_app_name() == "ProVDesk" {
+        pf.push_str("\\WanPulse");
+    }
     format!("{}\\{}", pf, crate::get_app_name())
 }
 
@@ -1520,6 +1527,22 @@ pub fn remove_meta_toml_cmd(is_msi: bool, path: &str) -> String {
     }
 }
 
+fn get_provdesk_uri_cleanup() -> String {
+    if crate::get_app_name() != "ProVDesk" {
+        return String::new();
+    }
+    let (_, _, _, exe) = get_install_info();
+    let command = RegKey::predef(HKEY_CLASSES_ROOT)
+        .open_subkey(r"rustdesk\shell\open\command")
+        .and_then(|key| key.get_value::<String, _>(""));
+    match command {
+        Ok(value) if value.eq_ignore_ascii_case(&format!("\"{exe}\" \"%1\"")) => {
+            "reg delete HKEY_CLASSES_ROOT\\rustdesk /f".to_owned()
+        }
+        _ => String::new(),
+    }
+}
+
 fn get_after_install(
     exe: &str,
     reg_value_start_menu_shortcuts: Option<String>,
@@ -1575,11 +1598,13 @@ fn get_after_install(
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open /f
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f
     reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f /ve /t REG_SZ /d \"\\\"{nested_exe}\\\" \\\"%%1\\\"\"
+    {provdesk_uri_cleanup}
     netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=out action=allow program=\"{exe}\" enable=yes
     netsh advfirewall firewall add rule name=\"{app_name} Service\" dir=in action=allow program=\"{exe}\" enable=yes
     {create_service}
     reg add HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /f /v SoftwareSASGeneration /t REG_DWORD /d 1
-    ", create_service=get_create_service(&exe))
+    ", create_service=get_create_service(&exe),
+        provdesk_uri_cleanup=get_provdesk_uri_cleanup())
 }
 
 pub fn install_me(options: &str, path: String, silent: bool, debug: bool) -> ResultType<()> {
@@ -1727,6 +1752,7 @@ copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\
 chcp 65001
 md \"{path}\"
 {copy_exe}
+{rename_exe}
 reg add {subkey} /f
 reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{display_icon}\"
 reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
@@ -1734,7 +1760,7 @@ reg add {subkey} /f /v DisplayVersion /t REG_SZ /d \"{version}\"
 reg add {subkey} /f /v Version /t REG_SZ /d \"{version}\"
 reg add {subkey} /f /v BuildDate /t REG_SZ /d \"{build_date}\"
 reg add {subkey} /f /v InstallLocation /t REG_SZ /d \"{path}\"
-reg add {subkey} /f /v Publisher /t REG_SZ /d \"{app_name}\"
+reg add {subkey} /f /v Publisher /t REG_SZ /d \"{editor_name}\"
 reg add {subkey} /f /v VersionMajor /t REG_DWORD /d {version_major}
 reg add {subkey} /f /v VersionMinor /t REG_DWORD /d {version_minor}
 reg add {subkey} /f /v VersionBuild /t REG_DWORD /d {version_build}
@@ -1753,6 +1779,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
 {sleep}
     ",
         display_icon = shortcut_icon_location.as_deref().unwrap_or(exe.as_str()),
+        editor_name = EDITOR_NAME,
         nested_exe = escape_nested_cmd_ampersands(&exe),
         version = crate::VERSION.replace("-", "."),
         build_date = crate::BUILD_DATE,
@@ -1765,6 +1792,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
         sleep = if debug { "timeout 300" } else { "" },
         dels = if debug { "" } else { &dels },
         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
+        rename_exe = rename_exe_cmd(&src_exe, &path)?,
         import_config = get_import_config(&exe),
     );
     run_cmds(cmds, debug, "install")?;
@@ -1802,9 +1830,11 @@ fn get_before_uninstall(kill_self: bool) -> String {
     taskkill /F /IM {app_name}.exe{filter}
     reg delete HKEY_CLASSES_ROOT\\.{ext} /f
     reg delete HKEY_CLASSES_ROOT\\{ext} /f
+    {provdesk_uri_cleanup}
     netsh advfirewall firewall delete rule name=\"{app_name} Service\"
     ",
         broker_exe = WIN_TOPMOST_INJECTED_PROCESS_EXE,
+        provdesk_uri_cleanup = get_provdesk_uri_cleanup(),
     )
 }
 

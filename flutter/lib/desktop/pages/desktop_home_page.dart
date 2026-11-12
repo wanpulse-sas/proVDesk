@@ -63,9 +63,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildLeftPane(context),
-        if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
+        if (appName == 'ProVDesk')
+          Expanded(child: buildLeftPane(context))
+        else
+          buildLeftPane(context),
+        if (!isIncomingOnly && appName != 'ProVDesk')
+          const VerticalDivider(width: 1),
+        if (!isIncomingOnly && appName != 'ProVDesk')
+          Expanded(child: buildRightPane(context)),
       ],
     ));
   }
@@ -111,7 +116,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         },
       ),
     ];
-    if (isIncomingOnly) {
+    if (isIncomingOnly && appName != 'ProVDesk') {
       children.addAll([
         Divider(),
         OnlineStatusWidget(
@@ -431,7 +436,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     if (!bind.isCustomClient() &&
         updateUrl.isNotEmpty &&
         !isCardClosed &&
-        bind.mainUriPrefixSync().contains('rustdesk')) {
+        bind.mainUriPrefixSync().contains('rustdesk') &&
+        appName != 'ProVDesk') {
       final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {

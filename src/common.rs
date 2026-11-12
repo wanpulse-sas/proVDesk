@@ -53,6 +53,8 @@ pub type NotifyMessageBox = fn(String, String, String, String) -> dyn Future<Out
 // the executable name of the portable version
 pub const PORTABLE_APPNAME_RUNTIME_ENV_KEY: &str = "RUSTDESK_APPNAME";
 
+const EMBED_FORCE_WEBSOCKET: Option<&str> = option_env!("RUSTDESK_FORCE_WEBSOCKET");
+
 pub const PLATFORM_WINDOWS: &str = "Windows";
 pub const PLATFORM_LINUX: &str = "Linux";
 pub const PLATFORM_MACOS: &str = "Mac OS";
@@ -1083,7 +1085,11 @@ pub fn is_rustdesk() -> bool {
 
 #[inline]
 pub fn get_uri_prefix() -> String {
-    format!("{}://", get_app_name().to_lowercase())
+    uri_prefix_for_app(&get_app_name())
+}
+
+fn uri_prefix_for_app(app_name: &str) -> String {
+    format!("{}://", app_name.to_lowercase())
 }
 
 #[cfg(target_os = "macos")]
@@ -1151,6 +1157,9 @@ fn get_api_server_(api: String, custom: String) -> String {
         } else {
             return format!("http://{}", s);
         }
+    }
+    if option_env!("RUSTDESK_APP_NAME") == Some("ProVDesk") {
+        return String::new();
     }
     "https://admin.rustdesk.com".to_owned()
 }
@@ -2372,6 +2381,19 @@ pub fn load_custom_client() {
     }
 }
 
+pub fn apply_embedded_network_settings() {
+    if EMBED_FORCE_WEBSOCKET == Some("Y") {
+        config::OVERWRITE_SETTINGS
+            .write()
+            .unwrap()
+            .insert(keys::OPTION_ALLOW_WEBSOCKET.to_owned(), "Y".to_owned());
+        config::HARD_SETTINGS
+            .write()
+            .unwrap()
+            .insert(keys::OPTION_ALLOW_WEBSOCKET.to_owned(), "Y".to_owned());
+    }
+}
+
 fn read_custom_client_advanced_settings(
     settings: serde_json::Value,
     map_display_settings: &HashMap<String, &&str>,
@@ -2588,7 +2610,7 @@ pub fn is_udp_disabled() -> bool {
 
 /// Run KCP with its congestion window (nc=0) instead of the turbo profile it has always shipped.
 ///
-/// Opt-in: which profile wins depends on why packets are lost — nc=1 deepens real congestion,
+/// Opt-in: which profile wins depends on why packets are lost â€” nc=1 deepens real congestion,
 /// while nc=0 reads random loss as congestion and its RTO backoff drops cwnd to 1. Undecidable
 /// without a shaped link, so keep what users run today.
 #[inline]
@@ -2940,6 +2962,13 @@ pub fn is_valid_untrusted_peer_id(id: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn provdesk_uses_its_own_uri_scheme_without_changing_other_brands() {
+        assert_eq!(super::uri_prefix_for_app("ProVDesk"), "provdesk://");
+        assert_eq!(super::uri_prefix_for_app("RustDesk"), "rustdesk://");
+        assert_eq!(super::uri_prefix_for_app("OtherBrand"), "otherbrand://");
+    }
+
     use super::*;
     use hbb_common::tokio::{
         self,
