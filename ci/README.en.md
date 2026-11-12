@@ -3,14 +3,18 @@
 [Français](README.md)
 
 Complete Windows client build from **the Bitbucket checkout commit**, signed
-through the **WanPulse framework**. The manual `provdesk-build-sign-package`
-pipeline builds, signs and publishes the signed final EXE to the product share.
-Pushes do not automatically launch this pipeline. Sources and CI are versioned
+through the **WanPulse framework**. A push to `master` automatically builds, signs,
+publishes a GitHub release, then publishes the final EXE to the product share.
+The same step is available manually as `provdesk-build-sign-package` on any branch.
+Only `master` publishes; other branches retain signed Bitbucket artifacts only.
+There is no publication parameter. Sources and CI are versioned
 together. The pipeline builds directly in the Bitbucket checkout. `Prepare-Source`
 initializes its submodules and records the commit, rejecting uncommitted changes
 and stale build outputs before any build patches are applied. The build modifies
 this disposable checkout; use a fresh checkout for each run. The `GITHUB_REVISION`
 variable must not be set.
+Build and signing remain active on all branches; GitHub and SMB preflight checks run only on `master`.
+
 The deliverables are the x64 client and self-extracting EXE, not the MSI/templates,
 ARM64, Sciter or other platforms covered by the cross-platform workflow.
 
@@ -165,8 +169,8 @@ snapshot/stamp. The next authorized Flutter invocation rebuilds it; synchronizat
 alone does not invoke a compiler.
 
 Tests without compilation cover automatic arguments, explicit limits and their
-preservation, and SDK patch updates. Automatic parallelism was validated by the clean local build described below;
-memory usage on the 8 GiB runner still needs measurement.
+preservation, and SDK patch updates. Measure memory consumption on the runner
+to adjust explicit limits to its capacity.
 
 `MIN_FREE_DISK_GB` is an optional Bitbucket variable: a positive integer, defaulting
 to **10 GiB**. Checks cover local volumes for the checkout, TEMP, profile and
@@ -174,8 +178,7 @@ Cargo/Rustup/LocalAppData caches before each script, before large installations
 and before the final archive. Paths must use local drive letters (no UNC shares
 or redirection to another volume). Below the threshold the pipeline stops without
 deleting files. These are checkpoints, not disk reservations or a guarantee that
-the full build will fit. With 36.3 GB initially available, observe the first build's
-actual disk usage.
+the full build will fit. Measure complete-build disk usage to size the runner.
 
 ### Prepared automatically by CI
 
@@ -200,8 +203,8 @@ The versions above were observed in build logs; they do not require manual
 installation. Internal Python is used by vcpkg/Meson; the application packaging
 still uses Python 3.15 and Brotli 1.2.1. CI scripts run under Windows PowerShell 5.1.
 `vcpkg-packages.txt` lists installed packages, not every downloaded helper tool.
-Native-library versions follow the baseline and overlays; a full build remains
-to be validated. Android `cpu-features` and Windows ARM64 `libsodium`
+Native-library versions follow the baseline and overlays versioned in this
+repository. Android `cpu-features` and Windows ARM64 `libsodium`
 entries in the cross-platform manifest do not apply to this x64 target.
 
 ### Variables and network
@@ -230,14 +233,16 @@ logs rather than assuming a fixed list.
 powershell -NoProfile -File ci/Test-Runner.ps1
 ```
 
-This preflight first tests SMB access using temporary files, then may download
-the pinned private MSBuild integration; it does not
+On `master`, preflight checks GitHub access and the source commit, then tests SMB
+access using temporary files. On all branches it may download the pinned
+private MSBuild integration; it does not
 compile, sign or use the private key. It checks tools,
 configuration and discoverable VS components; it cannot replace a build to validate
 private-key access, every SDK component or network access.
 
 Order: `Test-Runner` → `Test-Ci` → `Prepare-Source` → `Test-Toolchain` → `Prepare-BuildEnvironment` → `Build-Payload`
-→ `Complete-Payload` → `Sign-Payload` → `Package-Installer` → `Sign-Installer` → `Publish-Installer`.
+→ `Complete-Payload` → `Sign-Payload` → `Package-Installer` → `Sign-Installer` → `Publish-GitHubRelease` → `Publish-Installer`.
+The two publication stages run only on `master`.
 One Bitbucket step keeps the same Windows host and key access. A clean checkout
 is required; stale output is never reused.
 
@@ -251,9 +256,43 @@ Before and after final signing, `Verify-Package.py` decompresses `data.bin`, com
 every file with the signed manifest and checks that the blob is embedded in the
 EXE. Manifests, reports, patches, lockfiles, signed payload ZIP and final EXE go to `out/`.
 
+### GitHub release publication (master only)
+
+Pushes to `master` automatically build, sign and publish. Manual runs on `master`
+also publish; all other branches retain Bitbucket artifacts only. There is no
+publication variable. Both publication stages run after final signature verification.
+
+Install the official GitHub CLI (`gh`) on the Windows runner PATH and configure
+`GH_TOKEN` as a secured Bitbucket variable, restricted to the target repository
+with **Contents: write**. `GITHUB_RELEASE_REPOSITORY` defaults to
+`wanpulse-sas/proVDesk`; override it only to select the intended release repository.
+The runner needs access to `api.github.com`, `uploads.github.com` and GitHub asset hosts.
+On master, preflight checks GitHub access and requires its master commit to match
+`BITBUCKET_COMMIT`. This read-only check does not prove write permission. The same
+commit check runs again before publishing; a newer GitHub master blocks an older build.
+
+`Publish-GitHubRelease.ps1` reuses the existing WanPulse signature checks, verifies
+the installer version, SHA-256 and current build manifest, and creates a tag
+`provdesk-<version>-build.<Bitbucket build number>` at the exact built commit.
+A draft release receives only:
+
+- `ProVDesk-<version>-windows-x86_64.exe`: the same signed bytes as `out/ProVDesk.exe`;
+- its `.sha256` file, referring to the versioned asset name;
+- `build.json`: build and signature provenance.
+
+Release notes include a Windows x64 download table, ProVDesk characteristics,
+the product version, build number, source link and installer hash. GitHub also
+provides source archives for the tag; submodules still require a recursive clone.
+The draft is published only after the uploaded asset hashes have been checked.
+Existing tags and releases are never overwritten. A failed attempt can leave a
+reserved tag or draft: inspect and resolve it before retrying; there is no automatic cleanup.
+GitHub publication precedes SMB publication. These services are not transactional:
+a later SMB failure fails the pipeline but leaves the GitHub release published.
+Payload archives, signature reports and diagnostics remain Bitbucket artifacts.
+
 ### SMB publication
 
-After `Sign-Installer`, `Publish-Installer.ps1` publishes only `out/ProVDesk.exe`
+On `master`, after GitHub release publication, `Publish-Installer.ps1` publishes only `out/ProVDesk.exe`
 to `\\<ARTIFACTS_SHARING_HOST>\builds\WanPulse\ProVDesk\ProVDesk-<version>.exe`. The server comes from
 required `ARTIFACTS_SHARING_HOST` (for example `wp-cloudstorage`, without a UNC
 prefix or path). The `builds` share and `WanPulse\ProVDesk` subdirectory remain
@@ -261,10 +300,10 @@ fixed; `WANPULSE_OEM_PUBLISHER` does not change them.
 The version is read from the signed final EXE's `ProductVersion`, recorded in
 `build.json` and checked again before publication. Example: `ProVDesk-1.5.0.exe`.
 Missing, inconsistent or unsafe filename versions block publication. Each successful
-manual build replaces only the file for that version; other versioned
+master build replaces only the file for that version; other versioned
 executables are preserved in the same directory.
 
-Required Bitbucket variables:
+Required Bitbucket variables on `master`:
 
 | Variable | Value | Secured |
 |---|---|---|
@@ -273,7 +312,7 @@ Required Bitbucket variables:
 | `ARTIFACTS_SHARING_PASSWORD` | Account password | Yes |
 
 An unqualified account becomes `<ARTIFACTS_SHARING_HOST>\<account>`;
-a `DOMAIN\account` or UPN is preserved. At the start of `Test-Runner`, before
+a `DOMAIN\account` or UPN is preserved. On `master`, at the start of `Test-Runner`, before
 any downloads or compilation, preflight mounts the share using those credentials
 and checks `WanPulse\ProVDesk`: directory creation if needed, writing, reading,
 renaming with replacement, and deletion. It uses only two uniquely named
@@ -293,8 +332,8 @@ WanPulse signature, and a SHA256 matching `build.json`. The EXE is uploaded unde
 a unique temporary name, read back to verify its SHA256, then renamed to
 `ProVDesk-<version>.exe`. The local `out/ProVDesk.exe` stays unchanged. Errors fail the pipeline; the temporary file is cleaned up when
 possible and the SMB drive is removed. A network interruption can prevent cleanup.
-No other `out/` files are copied. The unsigned local harness does not run this
-stage or require SMB credentials.
+No other `out/` files are copied. Outside `master`, this stage and the SMB preflight
+are skipped; no SMB credentials are required.
 
 Keep these as Bitbucket artifacts:
 
@@ -309,8 +348,8 @@ Keep these as Bitbucket artifacts:
 The temporary PowerShell drive establishes the authenticated SMB connection.
 File operations then use absolute UNC paths, not `ProVDeskPreflight...:\` or
 `ProVDeskPublish...:\`: Windows PowerShell 5.1 can repeat the UNC root when
-content operations use these virtual drives. The old helper reproduced this
-problem; both preflight and publication now use the corrected path handling.
+content operations use these virtual drives. Both preflight and publication
+therefore use absolute UNC paths.
 
 `Test-Publication.ps1` covers failure cases with local fixtures.
 `Test-PublicationUnc.ps1` is an explicit integration test over **real SMB**. It
@@ -324,55 +363,24 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ci/tests/Test-Publicatio
 ```
 
 The current Windows identity is used by default; `-TestCredential` accepts a
-`PSCredential` when invoked within a PowerShell session. Local validation passed
-on **Windows PowerShell 5.1.26100.9711** through both `\\localhost\C$` and
-`\\127.0.0.1\C$`, inside a disposable repository folder. The old helper reproduces
-the repeated root; the corrected helper passes preflight, publication/replacement
-and cleanup using both addresses. This does not validate the Bitbucket account's
-credentials or permissions on the production server.
+`PSCredential` when invoked within a PowerShell session. Run this test with
+the identity and share permissions to verify. A local test does not validate the
+Bitbucket account access to the publication server.
 
 
 Driver packages are bundled only; they are never installed on the runner.
 
-## Clean local build on November 10, 2026
+## Delivery validation
 
-The client and final wrapper were rebuilt in a fresh workspace with the current
-CI scripts, VS2026 v143/v142 toolsets and automatic parallelism. WanPulse signing
-and publication were excluded; third-party driver catalogs were verified normally.
-Flutter symlinks were created from scratch after enabling Windows Developer Mode
-on the local machine.
+Run `provdesk-build-sign-package` on a branch other than `master` to validate
+building and signing without GitHub or SMB publication. Download the artifacts, compare the EXE SHA-256 against `build.json`,
+and verify its signature and timestamp. The manifest must identify the source
+commit of the executed pipeline. Signature reports and the payload manifest
+describe the files actually delivered.
 
-Result: unsigned final EXE **1.5.0**, **24.61 MiB**, with all **107 embedded files**
-matching the manifest. The client returns `1.5.0` for `--version` with exit code 0.
-Observed timings: main Rust library **10m 18s**, virtual display **2m 13s**, Flutter
-Windows **88.4s**, complete client including generation **15m 26s**, final packaging
-**3m 20s**. Total elapsed time was approximately **24 minutes**, including the
-preflight correction and resume.
-
-Both Rust utilities were reused from the persistent cache; **16 vcpkg packages**
-were restored from its binary cache. No previous client `source/target` or Flutter
-build was reused. These measurements apply to the local 16-logical-processor /
-31.5 GiB machine, not the runtime or memory footprint of the runner.
-
-The test revealed that `vcpkg env` drops the inherited PowerShell execution policy.
-Its probe invocation now specifies `-ExecutionPolicy Bypass` for that child process
-only, without changing the global Windows policy. The probe then passed and the
-build resumed. Actual signing, SMB publication and installation/runtime scenarios
-remain outside this local validation.
-
-## Validation status
-
-Comparison used the exact source commit and downloaded vendor archives. Driver
-catalogs and every declared member passed actual SignTool verification, including
-`/kp /c`, locally with SDK 10.0.26100.0. CMake v143/v142 and direct MSBuild probes
-compiled and executed successfully with Build Tools 2026. Local tests also cover
-PowerShell 5.1/YAML, mocked signing, caches, diagnostics, SUBST and the packer with
-Python 3.15.2/Brotli 1.2.1. Pipeline #13 verified a real timestamped WanPulse
-signature on its prerequisite probe before failing in libvpx. This does not yet
-validate a complete signed deliverable or its installation.
-Then validate installation, upgrade, uninstall, remote access, display,
-printing and Defender in a VM. Publish matching sources and patches with releases;
-the SMB transfer described above publishes only the signed executable.
+Before merging to `master`, validate installation, upgrades, uninstallation,
+remote access, display, printing and Defender in a VM using the signed branch artifact. Publish matching sources and patches with each
+release; the SMB transfer publishes only the signed executable.
 
 Signing is mandatory: inherited workspace `SKIP_SIGNATURE` is forced to `false` in this pipeline. Signing credentials remain required.
 
@@ -476,3 +484,4 @@ labels. Signing and publication settings come from Bitbucket variables and the
 runner configuration; secrets are not committed. Check that both repositories
 point to the same commit before starting a pipeline. GitHub Actions workflows
 are not required for this build process.
+

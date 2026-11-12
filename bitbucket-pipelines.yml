@@ -1,20 +1,22 @@
-# Manual Windows x64 build; publishes only the signed final EXE to the product SMB share.
+# Windows x64 build: automatic on master, manual on any branch; only master publishes.
 # Documentation: ci/README.md (French), ci/README.en.md (English).
 # Uses the WanPulse signing framework; preserves valid third-party signatures.
 # Driver catalogs are verified without modifying vendor files.
 # Required variables: WP_SIGNTOOL_PATH, SIGNING_CONTAINER, SIGNING_PASSWORD,
 # SIGNING_THUMBPRINT, MSBUILD_PATH and LIBCLANG_PATH.
-# Publication: ARTIFACTS_SHARING_HOST, ARTIFACTS_SHARING_USER and secured ARTIFACTS_SHARING_PASSWORD.
+# SMB: ARTIFACTS_SHARING_HOST, ARTIFACTS_SHARING_USER and secured ARTIFACTS_SHARING_PASSWORD.
+# GitHub on master: gh CLI and secured GH_TOKEN (Contents: write).
+# Optional GITHUB_RELEASE_REPOSITORY defaults to wanpulse-sas/proVDesk.
 # Store SIGNING_CONTAINER and SIGNING_PASSWORD as secured variables.
 # Windows SDK SignTool is auto-detected for verification only.
 # Optional overrides: SIGNTOOL_VERIFY_PATH and SIGNING_TIMESTAMP_URL.
 # Signing is mandatory; inherited SKIP_SIGNATURE is overridden. SIGN_LIBRARIES is not used.
 
 pipelines:
-  custom:
-    provdesk-build-sign-package:
-      - step:
-          name: Build, sign payload, package, sign and publish ProVDesk
+  branches:
+    master:
+      - step: &signed-build
+          name: Build, sign and package ProVDesk
           runs-on:
             - self.hosted
             - windows
@@ -28,3 +30,6 @@ pipelines:
           artifacts:
             - out/**
             - diagnostics/**
+  custom:
+    provdesk-build-sign-package:
+      - step: *signed-build
