@@ -58,3 +58,12 @@ libsciter.dylib
 flutter/web/
 # libdrmtap is cloned at build time by build.py (not a submodule)
 /third_party/libdrmtap/
+
+# ProVDesk CI workspaces and generated artifacts
+/work/
+/build-tools/
+/signing-work/
+/out/
+/diagnostics/
+/artifacts/
+/.ci-subst.json

@@ -13,17 +13,17 @@ Assert-NativeSuccess 'Flutter directory symlink privileges'
 $script:visualStudio | ConvertTo-Json | Set-Content -Encoding UTF8 "$work/visual-studio.json"
 Copy-Item -LiteralPath "$root/ci/msbuild-tools.json" -Destination "$work/msbuild-tools.json"
 # Validate all source patches before any expensive compilation.
-git -C source apply --check "$root/ci/patches/windows-full-features.patch"
+git -C $root apply --check "$root/ci/patches/windows-full-features.patch"
 Assert-NativeSuccess 'Source feature patch preflight'
-git -C source apply --check "$root/ci/patches/wrapper-manifest.patch"
+git -C $root apply --check "$root/ci/patches/wrapper-manifest.patch"
 Assert-NativeSuccess 'Wrapper patch preflight'
-git -C source/libs/hbb_common apply --check "$root/source/scripts/windows/provdesk-hbb-common.patch"
+git -C "$root/libs/hbb_common" apply --check "$root/scripts/windows/provdesk-hbb-common.patch"
 Assert-NativeSuccess 'Submodule patch preflight'
 foreach ($name in @('libvpx-msbuild.patch', 'opus-static-runtime.patch')) {
     $portPatch = Join-Path $root "ci/patches/$name"
-    git -C source apply --check $portPatch
+    git -C $root apply --check $portPatch
     Assert-NativeSuccess "Native port patch preflight: $name"
-    git -C source apply $portPatch
+    git -C $root apply $portPatch
     Assert-NativeSuccess "Apply native port patch: $name"
     Copy-Item -LiteralPath $portPatch -Destination "$work/$name"
 }
@@ -77,7 +77,7 @@ Write-VcpkgSelection $selectionPath $script:visualStudio.InstallationPath $scrip
 & $script:visualStudio.CMake -P "$root/ci/triplets/x64-windows-static.cmake"
 Assert-NativeSuccess 'Validate vcpkg triplet includes'
 Copy-Item -LiteralPath $selectionPath -Destination "$work/vcpkg-selection.cmake"
-Set-Location "$root/source"
+Set-Location $root
 $manifest = Get-Content -Encoding UTF8 vcpkg.json -Raw | ConvertFrom-Json
 if ($manifest.'vcpkg-configuration'.'default-registry'.baseline -ne $lock.vcpkgCommit) { throw 'Baseline vcpkg inattendu.' }
 

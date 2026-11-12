@@ -6,7 +6,7 @@ function Export-BuildDiagnostics([string]$Workspace) {
         $_.Name -match '(PASSWORD|SECRET|TOKEN|SIGNING_CONTAINER)' -and $_.Value
     } | ForEach-Object { $_.Value; [Uri]::EscapeDataString($_.Value) } | Sort-Object Length -Descending -Unique)
     $files = @()
-    foreach ($relative in @('build-tools/vcpkg/buildtrees', 'source/flutter/build/windows', 'build-tools/probes')) {
+    foreach ($relative in @('build-tools/vcpkg/buildtrees', 'flutter/build/windows', 'build-tools/probes')) {
         $directory = Join-Path $Workspace $relative
         if (Test-Path -LiteralPath $directory) {
             $files += @(Get-ChildItem -LiteralPath $directory -Recurse -File -Filter *.log -ErrorAction Stop)

@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $repository = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $fixture = Join-Path $repository ('work/signing-flow-' + [guid]::NewGuid().ToString('N'))
-$payload = "$fixture/source/artifacts/ci-payload"
+$payload = "$fixture/artifacts/ci-payload"
 New-Item -ItemType Directory -Force -Path "$fixture/ci/utils", "$fixture/signing-work", $payload | Out-Null
 foreach ($name in @('Common', 'VisualStudio', 'BuildResources')) {
     Copy-Item "$repository/ci/utils/$name.ps1" "$fixture/ci/utils/$name.ps1"

@@ -2,7 +2,7 @@
 # Uses the WanPulse signing framework command-line interface.
 $script:root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $script:work = Join-Path $root 'signing-work'
-$script:payload = Join-Path $root 'source/artifacts/ci-payload'
+$script:payload = Join-Path $root 'artifacts/ci-payload'
 Set-Location $root
 . (Join-Path $PSScriptRoot 'VisualStudio.ps1')
 . (Join-Path $PSScriptRoot 'BuildResources.ps1')

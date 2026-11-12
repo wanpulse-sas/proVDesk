@@ -2,11 +2,15 @@
 
 [Français](README.md)
 
-Complete Windows client build at the configured revision, signed through
-the **WanPulse framework**. Runs on pushes to `master` or manually through
-`provdesk-build-sign-package`, publishing only the signed final EXE to the
-product share. `GITHUB_REVISION` selects the source revision; otherwise,
-it is read from `ci/dependencies.json`.
+Complete Windows client build from **the Bitbucket checkout commit**, signed
+through the **WanPulse framework**. The manual `provdesk-build-sign-package`
+pipeline builds, signs and publishes the signed final EXE to the product share.
+Pushes do not automatically launch this pipeline. Sources and CI are versioned
+together. The pipeline builds directly in the Bitbucket checkout. `Prepare-Source`
+initializes its submodules and records the commit, rejecting uncommitted changes
+and stale build outputs before any build patches are applied. The build modifies
+this disposable checkout; use a fresh checkout for each run. The `GITHUB_REVISION`
+variable must not be set.
 The deliverables are the x64 client and self-extracting EXE, not the MSI/templates,
 ARM64, Sciter or other platforms covered by the cross-platform workflow.
 
@@ -29,8 +33,9 @@ Build configuration and patches are versioned with the product sources.
 
 Changes are kept in `patches/` and archived with artifacts. An additional adjustment
 makes the expected Git “already applied” check safe with Windows PowerShell 5.1
-stderr handling. No Rust/Dart business logic is modified. Before changing commits,
-review the patches and `dependencies.json`; a different source commit is rejected.
+stderr handling. These CI patches do not modify Rust/Dart business logic. Before
+integrating upstream changes, review the patches and `dependencies.json`;
+patch applicability is checked before compilation.
 
 ## Build Tools 2026 (18.x)
 
@@ -256,7 +261,7 @@ fixed; `WANPULSE_OEM_PUBLISHER` does not change them.
 The version is read from the signed final EXE's `ProductVersion`, recorded in
 `build.json` and checked again before publication. Example: `ProVDesk-1.5.0.exe`.
 Missing, inconsistent or unsafe filename versions block publication. Each successful
-manual or `master` build replaces only the file for that version; other versioned
+manual build replaces only the file for that version; other versioned
 executables are preserved in the same directory.
 
 Required Bitbucket variables:

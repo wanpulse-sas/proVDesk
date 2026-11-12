@@ -1,4 +1,4 @@
-# Windows x64 build on master pushes or manual execution; publishes only the signed final EXE to the product SMB share.
+# Manual Windows x64 build; publishes only the signed final EXE to the product SMB share.
 # Documentation: ci/README.md (French), ci/README.en.md (English).
 # Uses the WanPulse signing framework; preserves valid third-party signatures.
 # Driver catalogs are verified without modifying vendor files.
@@ -13,11 +13,7 @@
 pipelines:
   custom:
     provdesk-build-sign-package:
-      - variables:
-          - name: GITHUB_REVISION
-            default: c816f27fe152b53f1be7a9e81c8c22f3bcab500c
-            description: Approved full ProVDesk source commit
-      - step: &build-sign-package
+      - step:
           name: Build, sign payload, package, sign and publish ProVDesk
           runs-on:
             - self.hosted
@@ -32,7 +28,3 @@ pipelines:
           artifacts:
             - out/**
             - diagnostics/**
-
-  branches:
-    master:
-      - step: *build-sign-package

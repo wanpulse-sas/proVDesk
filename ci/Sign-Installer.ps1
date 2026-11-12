@@ -14,7 +14,7 @@ $sourceCommit = (Get-Content -Encoding UTF8 "$work/source-commit.txt" -Raw).Trim
 $finalExe = Join-Path $work 'ProVDesk.exe'
 
 Invoke-WanPulseSign $finalExe
-python "$root/ci/Verify-Package.py" "$root/source/libs/portable/data.bin" "$work/payload-signed.json" $finalExe
+python "$root/ci/Verify-Package.py" "$root/libs/portable/data.bin" "$work/payload-signed.json" $finalExe
 Assert-NativeSuccess 'Verification du contenu apres signature finale'
 # Compute the distribution hash AFTER final signing.
 $finalHash = (Get-FileHash -LiteralPath $finalExe -Algorithm SHA256).Hash

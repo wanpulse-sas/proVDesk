@@ -26,7 +26,7 @@ flutter config --enable-windows-desktop
 Assert-NativeSuccess 'Configuration Flutter'
 flutter precache --windows
 Assert-NativeSuccess 'Precache Flutter'
-$flutterPatch = Join-Path $root 'source/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff'
+$flutterPatch = Join-Path $root '.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff'
 git -C build-tools/flutter apply --check $flutterPatch
 Assert-NativeSuccess 'Verification du patch Flutter'
 git -C build-tools/flutter apply $flutterPatch
@@ -48,12 +48,12 @@ Assert-NativeSuccess 'Environnement Python'
 Assert-NativeSuccess 'Brotli'
 & "$root/build-tools/python/Scripts/python.exe" -m unittest discover -s "$root/ci/tests" -p test_package.py
 Assert-NativeSuccess 'Package regression tests'
-& "$root/build-tools/python/Scripts/python.exe" "$root/ci/tests/Test-ForkPackage.py" "$root/source/libs/portable/generate.py"
+& "$root/build-tools/python/Scripts/python.exe" "$root/ci/tests/Test-ForkPackage.py" "$root/libs/portable/generate.py"
 Assert-NativeSuccess 'Pinned fork package producer/consumer test'
 
 # The real vcpkg environment was validated by Test-Toolchain before this stage.
 . (Join-Path $PSScriptRoot 'utils/Vcpkg.ps1')
-Set-Location "$root/source"
+Set-Location $root
 Assert-FreeDiskSpace 'vcpkg compilation'
 & "$env:VCPKG_ROOT/vcpkg.exe" install --triplet x64-windows-static "--overlay-triplets=$root/ci/triplets" "--x-install-root=$env:VCPKG_ROOT/installed"
 Assert-NativeSuccess 'Dependances natives vcpkg'

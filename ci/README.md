@@ -2,11 +2,16 @@
 
 [English](README.en.md)
 
-Compilation complète du client Windows à la révision configurée, avec
-signature par le **framework WanPulse**. Lancement sur push vers `master`
-ou manuel via `provdesk-build-sign-package`, avec publication du seul EXE
-final signé sur le partage produit. `GITHUB_REVISION` sélectionne la révision
-source ; à défaut, elle est lue dans `ci/dependencies.json`.
+Compilation complète du client Windows depuis **le commit du checkout Bitbucket**,
+avec signature par le **framework WanPulse**. Le pipeline manuel
+`provdesk-build-sign-package` compile, signe et publie le seul EXE final signé
+sur le partage produit. Aucun push ne lance automatiquement ce pipeline.
+Les sources et la CI sont versionnées ensemble. Le pipeline compile directement
+dans le checkout Bitbucket. `Prepare-Source` initialise ses sous-modules et
+enregistre le commit ; il refuse les modifications non commitées et les sorties
+d'un ancien build avant l'application des patches de compilation. Le build modifie
+ce checkout jetable : chaque exécution doit partir d'un checkout propre.
+La variable `GITHUB_REVISION` ne doit pas être définie.
 Le périmètre de livraison est le client x64 et son EXE autoextractible, pas les
 MSI/templates, ARM64, Sciter ou autres plateformes du workflow multiplateforme.
 
@@ -30,8 +35,8 @@ La configuration et les patches sont versionnés avec les sources du produit.
 Les adaptations sont conservées dans `patches/` et archivées avec les artefacts.
 Une adaptation supplémentaire protège le test Git « patch déjà appliqué » des
 particularités stderr de Windows PowerShell 5.1. Aucun code métier Rust/Dart n'est
-modifié. Pour changer de commit, revoir les patches et `dependencies.json` ; la CI
-refuse un commit différent du verrou.
+modifié par ces patches CI. Pour intégrer une évolution amont, revoir les patches
+et `dependencies.json` ; leur applicabilité est vérifiée avant la compilation.
 
 ## Build Tools 2026 (18.x)
 
@@ -263,7 +268,7 @@ Le serveur vient de la variable obligatoire `ARTIFACTS_SHARING_HOST` (par exempl
 `WanPulse\ProVDesk` restent fixes ; `WANPULSE_OEM_PUBLISHER` ne les modifie pas. La version est lue dans `ProductVersion` de l'EXE final signé, enregistrée dans
 `build.json` puis revérifiée avant publication. Par exemple : `ProVDesk-1.5.0.exe`.
 Une version absente, incohérente ou impropre à un nom de fichier bloque la publication.
-Chaque build réussi, manuel ou sur `master`, remplace uniquement le fichier de
+Chaque build manuel réussi remplace uniquement le fichier de
 la même version ; les EXE des autres versions sont conservés dans le même dossier.
 
 Variables Bitbucket requises :
