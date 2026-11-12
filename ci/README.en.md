@@ -519,3 +519,24 @@ runner configuration; secrets are not committed. Check that both repositories
 point to the same commit before starting a pipeline. GitHub Actions workflows
 are not required for this build process.
 
+## Push a branch to GitHub and Bitbucket
+
+A single local clone is sufficient. Configure a `publish` remote with two push
+destinations, replacing the example URLs with the repository URLs:
+
+```powershell
+git remote add publish <GITHUB_URL>
+git remote set-url --add --push publish <GITHUB_URL>
+git remote set-url --add --push publish <BITBUCKET_URL>
+```
+
+After editing and committing, `git push publish HEAD` sends the current branch
+to both repositories. To restrict `git push publish` to a specific branch, set
+`remote.publish.push` to `refs/heads/<branch>:refs/heads/<branch>`.
+This configuration is local to the clone and requires write access to both
+services. The two pushes are not atomic: after a partial failure, compare SHAs
+with `git ls-remote <URL> refs/heads/<branch>` and complete the missing push
+without forcing a divergence. Fetch changes made directly on either website
+before pushing.
+For `master`, push to GitHub first, then Bitbucket: the Bitbucket push automatically
+starts building and publishing, and GitHub master must already match the built commit.
