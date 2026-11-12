@@ -483,3 +483,12 @@ compile pas le wrapper et ne valide pas son exécution Windows.
 Les tests locaux ne remplacent pas une exécution complète du pipeline signé.
 Valider en VM l'installation, la mise à niveau, la session distante,
 la désinstallation et les détections Defender avec l'installateur signé.
+
+## Dépôts et runner
+
+GitHub héberge les sources et la CI. Bitbucket exécute le même commit Git sur un
+runner Windows portant les labels `self.hosted`, `windows`, `capability.build`
+et `capability.sign`. Les paramètres de signature et de publication sont fournis
+par les variables Bitbucket et la configuration du runner ; les secrets ne sont
+pas versionnés. Vérifier l'égalité des commits des deux dépôts avant de lancer
+un pipeline. Les workflows GitHub Actions ne sont pas nécessaires à ce circuit.

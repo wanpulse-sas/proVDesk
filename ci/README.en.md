@@ -467,3 +467,12 @@ the wrapper or validate its Windows runtime behavior.
 Local tests do not replace a complete signed pipeline run. Validate
 installation, upgrades, remote sessions, uninstallation and Defender
 detections in a VM using the signed installer.
+
+## Repositories and runner
+
+GitHub hosts the sources and CI. Bitbucket runs the same Git commit on a Windows
+runner with the `self.hosted`, `windows`, `capability.build` and `capability.sign`
+labels. Signing and publication settings come from Bitbucket variables and the
+runner configuration; secrets are not committed. Check that both repositories
+point to the same commit before starting a pipeline. GitHub Actions workflows
+are not required for this build process.
