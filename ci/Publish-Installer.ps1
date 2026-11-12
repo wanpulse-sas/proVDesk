@@ -1,6 +1,7 @@
 ﻿#Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($env:BITBUCKET_BRANCH -cne 'master') { throw 'SMB publication is restricted to master.' }
 . (Join-Path $PSScriptRoot 'utils/Common.ps1')
 . (Join-Path $PSScriptRoot 'utils/Publication.ps1')
 Initialize-Signing

@@ -4,7 +4,11 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'utils/Common.ps1')
 . (Join-Path $PSScriptRoot 'utils/Publication.ps1')
-Assert-PublicationAccess
+if ($env:BITBUCKET_BRANCH -ceq 'master') {
+    . (Join-Path $PSScriptRoot 'utils/GitHubRelease.ps1')
+    Invoke-GitHubAppSession { Assert-GitHubReleaseAccess }
+    Assert-PublicationAccess
+}
 Assert-FreeDiskSpace 'Test-Runner'
 if (($env:OS -ne 'Windows_NT') -or -not [Environment]::Is64BitProcess) { throw 'Windows x64 / PowerShell 5.1 x64 requis.' }
 foreach ($command in @('git', 'rustup', 'cargo', 'python')) {

@@ -4,7 +4,10 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $repository = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $before = (& "$env:SystemRoot/System32/subst.exe") -join "`n"
-foreach ($failureStage in @('', 'Test-Runner', 'Test-Toolchain', 'Build-Payload', 'Sign-Installer', 'Publish-Installer')) {
+$previousBranch = $env:BITBUCKET_BRANCH
+try {
+$env:BITBUCKET_BRANCH = 'master'
+foreach ($failureStage in @('', 'Test-Runner', 'Test-Toolchain', 'Build-Payload', 'Sign-Installer', 'Publish-GitHubRelease', 'Publish-Installer')) {
     $fail = [bool]$failureStage
     $fixture = Join-Path $repository ('work/lifecycle-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path "$fixture/ci/utils" | Out-Null
@@ -20,7 +23,7 @@ New-Item -ItemType Directory -Force -Path "$root/build-tools/vcpkg/buildtrees/fi
 Set-Content "$root/build-tools/vcpkg/buildtrees/fixture/stdout.log" 'fixture diagnostic'
 '@
     foreach ($name in @('Test-Runner', 'Test-Ci', 'Prepare-Source', 'Test-Toolchain', 'Prepare-BuildEnvironment', 'Build-Payload',
-            'Complete-Payload', 'Sign-Payload', 'Package-Installer', 'Sign-Installer', 'Publish-Installer')) {
+            'Complete-Payload', 'Sign-Payload', 'Package-Installer', 'Sign-Installer', 'Publish-GitHubRelease', 'Publish-Installer')) {
         $content = $stage
         if ($name -eq $failureStage) { $content += "`r`nexit 23" }
         Set-Content "$fixture/ci/$name.ps1" $content -Encoding UTF8
@@ -39,4 +42,5 @@ Set-Content "$root/build-tools/vcpkg/buildtrees/fixture/stdout.log" 'fixture dia
     if (Test-Path "$fixture/.ci-subst.json") { throw 'SUBST state was not cleaned.' }
     if (((& "$env:SystemRoot/System32/subst.exe") -join "`n") -ne $before) { throw 'SUBST mapping leaked.' }
 }
+} finally { $env:BITBUCKET_BRANCH = $previousBranch }
 Write-Host 'Pipeline success/failure, diagnostics and after-script lifecycle tests passed.'

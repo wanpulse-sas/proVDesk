@@ -9,7 +9,11 @@ Invoke-ShortWorkspace $workspace {
     Set-Location -LiteralPath $shortRoot
     try {
         foreach ($stage in @('Test-Runner', 'Test-Ci', 'Prepare-Source', 'Test-Toolchain', 'Prepare-BuildEnvironment',
-                'Build-Payload', 'Complete-Payload', 'Sign-Payload', 'Package-Installer', 'Sign-Installer', 'Publish-Installer')) {
+                'Build-Payload', 'Complete-Payload', 'Sign-Payload', 'Package-Installer', 'Sign-Installer', 'Publish-GitHubRelease', 'Publish-Installer')) {
+            if ($env:BITBUCKET_BRANCH -cne 'master' -and $stage -in @('Publish-GitHubRelease', 'Publish-Installer')) {
+                Write-Host 'Non-master build: signed output retained in Bitbucket artifacts; publication skipped.'
+                continue
+            }
             Write-Host "=== $stage ==="
             & "$PSHOME/powershell.exe" -NoProfile -File (Join-Path $shortRoot "ci/$stage.ps1")
             if ($LASTEXITCODE -ne 0) { throw "$stage failed (exit $LASTEXITCODE)." }

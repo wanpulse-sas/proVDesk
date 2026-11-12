@@ -3,7 +3,7 @@ function Export-BuildDiagnostics([string]$Workspace) {
     $destination = Join-Path $Workspace 'diagnostics'
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
     $secrets = @(Get-ChildItem Env: | Where-Object {
-        $_.Name -match '(PASSWORD|SECRET|TOKEN|SIGNING_CONTAINER)' -and $_.Value
+        $_.Name -match '(PASSWORD|SECRET|TOKEN|PRIVATE_KEY|SIGNING_CONTAINER)' -and $_.Value
     } | ForEach-Object { $_.Value; [Uri]::EscapeDataString($_.Value) } | Sort-Object Length -Descending -Unique)
     $files = @()
     foreach ($relative in @('build-tools/vcpkg/buildtrees', 'flutter/build/windows', 'build-tools/probes')) {
