@@ -1,0 +1,110 @@
+--- a/packages/flutter_tools/lib/src/windows/visual_studio.dart
++++ b/packages/flutter_tools/lib/src/windows/visual_studio.dart
+@@ -157,6 +157,10 @@
+   /// The path to CMake, or null if no Visual Studio installation has
+   /// the components necessary to build.
+   String? get cmakePath {
++    final String? ciCmake = _platform.environment['PROVDESK_CMAKE_PATH'];
++    if (ciCmake != null && ciCmake.isNotEmpty) {
++      return ciCmake;
++    }
+     final VswhereDetails? details = _bestVisualStudioDetails;
+     if (details == null || !details.isUsable || details.installationPath == null) {
+       return null;
+@@ -180,6 +184,7 @@
+   String? get cmakeGenerator {
+     // From https://cmake.org/cmake/help/v3.22/manual/cmake-generators.7.html#visual-studio-generators
+     return switch (_majorVersion) {
++      18 => 'Visual Studio 18 2026',
+       17 => 'Visual Studio 17 2022',
+       _  => 'Visual Studio 16 2019',
+     };
+@@ -301,9 +306,11 @@
+     // be included here.
+     return <String, String>{
+       // The C++ toolchain required by the template.
+-      'Microsoft.VisualStudio.Component.VC.Tools.x86.x64': cppToolchainDescription,
++      if (!_platform.environment.containsKey('PROVDESK_MSVC_VERSION'))
++        'Microsoft.VisualStudio.Component.VC.Tools.x86.x64': cppToolchainDescription,
+       // CMake
+-      'Microsoft.VisualStudio.Component.VC.CMake.Project': 'C++ CMake tools for Windows',
++      if (!_platform.environment.containsKey('PROVDESK_CMAKE_PATH'))
++        'Microsoft.VisualStudio.Component.VC.CMake.Project': 'C++ CMake tools for Windows',
+     };
+   }
+ 
+@@ -346,7 +353,7 @@
+         '-format', 'json',
+         '-products', '*',
+         '-utf8',
+-        '-latest',
++        if (!_platform.environment.containsKey('PROVDESK_VS_ROOT')) '-latest',
+       ];
+       // Ignore replacement characters as vswhere.exe is known to output them.
+       // See: https://github.com/flutter/flutter/issues/102451
+@@ -359,6 +366,11 @@
+       ], encoding: encoding);
+       if (whereResult.exitCode == 0) {
+         final List<Map<String, dynamic>>? installations = _tryDecodeVswhereJson(whereResult.stdout);
++        final String? ciInstance = _platform.environment['PROVDESK_VS_ROOT'];
++        if (installations != null && ciInstance != null) {
++          installations.removeWhere((Map<String, dynamic> entry) =>
++            (entry['installationPath'] as String?)?.toLowerCase() != ciInstance.toLowerCase());
++        }
+         if (installations != null && installations.isNotEmpty) {
+           final String? msvcVersion = _findMsvcVersion(installations);
+           return VswhereDetails.fromJson(
+@@ -378,6 +390,10 @@
+ 
+   String? _findMsvcVersion(List<Map<String, dynamic>> installations) {
+     final String? installationPath = installations[0]['installationPath'] as String?;
++    final String? ciMsvcVersion = _platform.environment['PROVDESK_MSVC_VERSION'];
++    if (ciMsvcVersion != null && ciMsvcVersion.isNotEmpty) {
++      return ciMsvcVersion;
++    }
+     String? msvcVersion;
+     if (installationPath != null) {
+       final Directory installationDir = _fileSystem.directory(installationPath);
+--- a/packages/flutter_tools/lib/src/windows/build_windows.dart
++++ b/packages/flutter_tools/lib/src/windows/build_windows.dart
+@@ -198,6 +198,12 @@
+         generator,
+         '-A',
+         getCmakeWindowsArch(targetPlatform),
++        if (generator == 'Visual Studio 18 2026') ...<String>[
++          '-T', globals.platform.environment['PROVDESK_CMAKE_TOOLSET']!,
++          '-DCMAKE_VS_GLOBALS=${globals.platform.environment['PROVDESK_VS_GLOBALS']}',
++          if (globals.platform.environment.containsKey('PROVDESK_VS_ROOT'))
++            '-DCMAKE_GENERATOR_INSTANCE=${globals.platform.environment['PROVDESK_VS_ROOT']}',
++        ],
+         '-DFLUTTER_TARGET_PLATFORM=${getNameForTargetPlatform(targetPlatform)}',
+       ],
+       trace: true,
+@@ -238,6 +244,13 @@
+     ].join('|'),
+   );
+ 
++  final String? parallelLevel = globals.platform.environment['CMAKE_BUILD_PARALLEL_LEVEL'];
++  if (parallelLevel != null && parallelLevel.isNotEmpty &&
++      (!RegExp(r'^[0-9]+$').hasMatch(parallelLevel) ||
++       int.tryParse(parallelLevel) == null || int.parse(parallelLevel) < 1 ||
++       int.parse(parallelLevel) > 2147483647)) {
++    throwToolExit('CMAKE_BUILD_PARALLEL_LEVEL must be empty or a positive integer.');
++  }
+   int result;
+   try {
+     result = await globals.processUtils.stream(
+@@ -251,6 +264,13 @@
+           ...<String>['--target', 'INSTALL'],
+         if (globals.logger.isVerbose)
+           '--verbose',
++        // An explicit environment limit wins; otherwise request the generator's native default.
++        if (parallelLevel == null || parallelLevel.isEmpty) '--parallel',
++        '--',
++        '/p:UseMultiToolTask=true',
++        '/p:EnforceProcessCountAcrossBuilds=true',
++        if (parallelLevel != null && parallelLevel.isNotEmpty)
++          '/p:MultiProcMaxCount=$parallelLevel',
+       ],
+       environment: <String, String>{
+         if (globals.logger.isVerbose)

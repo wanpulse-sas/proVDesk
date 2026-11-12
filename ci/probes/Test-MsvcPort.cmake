@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.17)
+include("${CMAKE_CURRENT_LIST_DIR}/../utils/MsvcPort.cmake")
+provdesk_msvc_port_options(options)
+if(NOT EXISTS "${PROVDESK_MSBUILD}" OR NOT PROVDESK_EXPECTED_MSC_VER MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "Validated MSBuild and compiler version are required")
+endif()
+if(NOT DEFINED PROVDESK_MSBUILD_PARALLEL_ARGS)
+    message(FATAL_ERROR "Native parallel arguments must be supplied by the caller")
+endif()
+set(build "${CMAKE_CURRENT_LIST_DIR}/../../build-tools/probes/direct-msbuild")
+file(MAKE_DIRECTORY "${build}")
+foreach(name IN ITEMS msbuild.vcxproj main.cpp probe.rc)
+    configure_file("${CMAKE_CURRENT_LIST_DIR}/${name}" "${build}/${name}" COPYONLY)
+endforeach()
+execute_process(COMMAND "${PROVDESK_MSBUILD}" "${build}/msbuild.vcxproj"
+    /nologo ${PROVDESK_MSBUILD_PARALLEL_ARGS} /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143
+    /p:PreferredToolArchitecture=x64 "/p:ExpectedMscVer=${PROVDESK_EXPECTED_MSC_VER}"
+    "/p:OutDir=${build}/bin/" "/p:IntDir=${build}/obj/" ${options}
+    RESULT_VARIABLE result)
+if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Direct MSBuild port probe failed: ${result}")
+endif()
+execute_process(COMMAND "${build}/bin/provdesk-msbuild-probe.exe" RESULT_VARIABLE result)
+if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Direct MSBuild port probe execution failed: ${result}")
+endif()

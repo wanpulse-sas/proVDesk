@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.14)
+project(ProVDeskProbe LANGUAGES CXX RC)
+add_executable(provdesk-probe main.cpp probe.rc)
+target_compile_features(provdesk-probe PRIVATE cxx_std_17)
+if(NOT PROVDESK_EXPECTED_MSC_VER MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "PROVDESK_EXPECTED_MSC_VER is required")
+endif()
+target_compile_definitions(provdesk-probe PRIVATE PROVDESK_EXPECTED_MSC_VER=${PROVDESK_EXPECTED_MSC_VER})

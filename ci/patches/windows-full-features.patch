@@ -1,0 +1,30 @@
+--- a/scripts/windows/build-rustdesk-appname.ps1
++++ b/scripts/windows/build-rustdesk-appname.ps1
+@@ -42,8 +42,14 @@
+ 
+ try {
+         $patchPath = Join-Path $PSScriptRoot 'provdesk-hbb-common.patch'
+-        git -C libs/hbb_common apply --reverse --check $patchPath 2>$null
+-        if ($LASTEXITCODE -ne 0) {
++        # Windows PowerShell 5.1 must not turn this expected native stderr into a terminating error.
++        $savedErrorPreference = $ErrorActionPreference
++        try {
++                $ErrorActionPreference = 'Continue'
++                git -C libs/hbb_common apply --reverse --check $patchPath 2>$null
++                $patchAlreadyApplied = ($LASTEXITCODE -eq 0)
++        } finally { $ErrorActionPreference = $savedErrorPreference }
++        if (-not $patchAlreadyApplied) {
+                 git -C libs/hbb_common apply --check $patchPath
+                 if ($LASTEXITCODE -ne 0) { throw 'The hbb_common customization patch cannot be applied.' }
+                 git -C libs/hbb_common apply $patchPath
+@@ -89,8 +95,8 @@
+-                flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart
++                flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart --llvm-path (Join-Path $env:LIBCLANG_PATH 'libclang.dll')
+                 if ($LASTEXITCODE -ne 0) { throw 'Flutter bridge generation failed.' }
+         } finally { [Environment]::SetEnvironmentVariable('RUST_LOG', $originalRustLog, 'Process') }
+ 		# Build core and flutter
+-		$features = python .\build.py --flutter --print-features
++		$features = python .\build.py --flutter --hwcodec --vram --print-features
+ 		if ($LASTEXITCODE -ne 0) { throw "build.py --print-features failed with exit code $LASTEXITCODE" }
+ 		if ([string]::IsNullOrWhiteSpace($features)) { throw 'Failed to get features from build.py' }
+ 

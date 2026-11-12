@@ -1,0 +1,10 @@
+--- a/res/vcpkg/opus/portfile.cmake
++++ b/res/vcpkg/opus/portfile.cmake
+@@ -42,6 +42,7 @@
+     OPTIONS ${FEATURE_OPTIONS}
+         -DPACKAGE_VERSION=${VERSION}
+         -DOPUS_STACK_PROTECTOR=${STACK_PROTECTOR}
++        -DOPUS_STATIC_RUNTIME=ON
+         -DOPUS_INSTALL_PKG_CONFIG_MODULE=ON
+         -DOPUS_INSTALL_CMAKE_CONFIG_MODULE=ON
+         -DOPUS_BUILD_PROGRAMS=OFF

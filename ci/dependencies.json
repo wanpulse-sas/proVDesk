@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "c816f27fe152b53f1be7a9e81c8c22f3bcab500c",
+  "flutterVersion": "3.24.5",
+  "vcpkgCommit": "9e593bb18ea69cc5095e012465dcd675a822ed0d",
+  "topmostCommit": "ecd8d6a139eee76845ea66423fb739af450fda90",
+  "assets": [
+    {
+      "name": "engine",
+      "url": "https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip",
+      "sha256": "EC8CABF36EE4FF24C8D98DE25B00E70781EB03876265AEE84D0FE554A110036E"
+    },
+    {
+      "name": "display",
+      "url": "https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip",
+      "sha256": "629B51E9944762BAE73948171C65D09A79595CF4C771A82EBC003FBBA5B24F51"
+    },
+    {
+      "name": "printer",
+      "url": "https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip",
+      "sha256": "C4CF4D3B48C4D9079B243EDC43BB1DB03B076282BC259C9F49883E9DB20FA8B5"
+    },
+    {
+      "name": "adapter",
+      "url": "https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip",
+      "sha256": "E90E5D52C8807B4C6293C78A52479338715E0BF396B1B34802777B8C452E6781"
+    }
+  ],
+  "flutterCommit": "dec2ee5c1f98f8e84a7d5380c05eb8a3d0a81668"
+}

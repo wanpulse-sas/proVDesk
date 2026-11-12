@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "source": "Visual Studio 2026 catalog 18.11.12306.390",
+  "packages": [
+    {
+      "id": "microsoft.visualstudio.vc.msbuild.v170.base",
+      "version": "17.14.36109.1",
+      "url": "https://download.visualstudio.microsoft.com/download/pr/13849371-5fcc-4826-952d-69004ca5e215/c8215f5171dd3a1ba5411a2000aa3d4819cb7952039af045adb79766508bd578/payload.vsix",
+      "sha256": "c8215f5171dd3a1ba5411a2000aa3d4819cb7952039af045adb79766508bd578"
+    },
+    {
+      "id": "microsoft.visualstudio.vc.msbuild.v170.base.resources",
+      "version": "17.14.36109.1",
+      "url": "https://download.visualstudio.microsoft.com/download/pr/13849371-5fcc-4826-952d-69004ca5e215/ca1b3f23f73db19565aaf4841dd60228ba164d1e00968851785ac309086ee619/payload.vsix",
+      "sha256": "ca1b3f23f73db19565aaf4841dd60228ba164d1e00968851785ac309086ee619"
+    },
+    {
+      "id": "microsoft.visualstudio.vc.msbuild.v170.x64",
+      "version": "17.14.36109.1",
+      "url": "https://download.visualstudio.microsoft.com/download/pr/58af20f6-56e8-48a0-86d3-115fb110097b/ff449f187733d3334cd141988979f3e7c3a3cbaa504fead7b135c0460a032805/payload.vsix",
+      "sha256": "ff449f187733d3334cd141988979f3e7c3a3cbaa504fead7b135c0460a032805"
+    },
+    {
+      "id": "microsoft.visualstudio.vc.msbuild.v170.x64.v143",
+      "version": "17.14.36109.1",
+      "url": "https://download.visualstudio.microsoft.com/download/pr/58af20f6-56e8-48a0-86d3-115fb110097b/3b2d6b39798ac7219cfd6bf22e1ebac85cd7c2d41011d14b689108a66c03b136/payload.vsix",
+      "sha256": "3b2d6b39798ac7219cfd6bf22e1ebac85cd7c2d41011d14b689108a66c03b136"
+    }
+  ]
+}

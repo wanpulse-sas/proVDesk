@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "toolchain": "1.91.1",
+  "target": "x86_64-pc-windows-msvc",
+  "tools": [
+    { "name": "cargo-expand", "version": "1.0.95", "features": [] },
+    { "name": "flutter_rust_bridge_codegen", "version": "1.80.1", "features": ["uuid"] }
+  ]
+}

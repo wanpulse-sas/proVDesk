@@ -1,0 +1,38 @@
+# Windows x64 build on master pushes or manual execution; publishes only the signed final EXE to the product SMB share.
+# Documentation: ci/README.md (French), ci/README.en.md (English).
+# Uses the WanPulse signing framework; preserves valid third-party signatures.
+# Driver catalogs are verified without modifying vendor files.
+# Required variables: WP_SIGNTOOL_PATH, SIGNING_CONTAINER, SIGNING_PASSWORD,
+# SIGNING_THUMBPRINT, MSBUILD_PATH and LIBCLANG_PATH.
+# Publication: ARTIFACTS_SHARING_HOST, ARTIFACTS_SHARING_USER and secured ARTIFACTS_SHARING_PASSWORD.
+# Store SIGNING_CONTAINER and SIGNING_PASSWORD as secured variables.
+# Windows SDK SignTool is auto-detected for verification only.
+# Optional overrides: SIGNTOOL_VERIFY_PATH and SIGNING_TIMESTAMP_URL.
+# Signing is mandatory; inherited SKIP_SIGNATURE is overridden. SIGN_LIBRARIES is not used.
+
+pipelines:
+  custom:
+    provdesk-build-sign-package:
+      - variables:
+          - name: GITHUB_REVISION
+            default: c816f27fe152b53f1be7a9e81c8c22f3bcab500c
+            description: Approved full ProVDesk source commit
+      - step: &build-sign-package
+          name: Build, sign payload, package, sign and publish ProVDesk
+          runs-on:
+            - self.hosted
+            - windows
+            - capability.build
+            - capability.sign
+          max-time: 240
+          script:
+            - powershell -NoProfile -File ci/Run-Pipeline.ps1; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          after-script:
+            - powershell -NoProfile -File ci/Cleanup-Workspace.ps1; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          artifacts:
+            - out/**
+            - diagnostics/**
+
+  branches:
+    master:
+      - step: *build-sign-package

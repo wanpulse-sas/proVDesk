@@ -1,0 +1,16 @@
+--- a/res/vcpkg/libvpx/portfile.cmake
++++ b/res/vcpkg/libvpx/portfile.cmake
+@@ -97,9 +97,13 @@
+         WORKING_DIRECTORY "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-tmp"
+         LOGNAME generate-${TARGET_TRIPLET})
+ 
++    # vcpkg sanitizes the environment; load the validated MSBuild selection explicitly.
++    include("${CMAKE_CURRENT_LIST_DIR}/../../../../ci/utils/MsvcPort.cmake")
++    provdesk_msvc_port_options(PROVDESK_MSBUILD_OPTIONS)
+     vcpkg_msbuild_install(
+         SOURCE_PATH "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-tmp"
+         PROJECT_SUBPATH vpx.vcxproj
++        OPTIONS ${PROVDESK_MSBUILD_OPTIONS}
+     )
+ 
+     if (VCPKG_TARGET_ARCHITECTURE STREQUAL arm64)
