@@ -40,6 +40,34 @@ artifacts/ProVDesk/ProVDesk.exe together with LICENCE and this notice.
 folder, including its DLLs and data. The script preserves the caller's build
 environment and restores Runner.rc after building.
 
+## Signed Windows CI build
+
+Sources and CI are versioned together. Bitbucket builds its selected checkout
+commit on the Windows runner using the WanPulse signing framework.
+See [the English CI guide](ci/README.en.md) or
+[the French CI guide](ci/README.md) for tool versions, runner configuration,
+required variables and detailed checks.
+
+A push to `master` automatically starts the build and signing pipeline, followed
+by GitHub release publication and SMB publication. The same step can be started
+manually as `provdesk-build-sign-package` on any branch. Only `master` publishes;
+other branches retain signed Bitbucket artifacts without GitHub or SMB publication.
+There is no publication parameter. GitHub and SMB preflight checks run only on `master`.
+
+The GitHub release contains `ProVDesk-<version>-windows-x86_64.exe`, its `.sha256`
+and `build.json`. Renaming preserves the signed executable bytes.
+Its tag, `provdesk-<version>-build.<number>`, points to the exact built commit.
+The pipeline verifies the signed installer and uploaded asset hashes before
+publishing the draft release; it then publishes the same installer to SMB.
+
+CI signs the payload EXE and DLLs before packaging, preserves and verifies valid
+third-party signatures and catalog-covered driver files, then signs the final
+self-extracting installer. Embedded files are checked against the signed payload.
+Artifacts include `out/ProVDesk.exe`, its SHA-256, `build.json`, signature reports
+and the signed payload archive. Verify signatures, hashes and the source commit,
+then test installation and runtime behavior in a VM before distribution.
+This CI covers Windows x64; it does not build the macOS packages described below.
+
 ## Before distributing binaries
 
 Publish the exact matching modified source commit/tag to the public fork,
@@ -168,8 +196,8 @@ the right panel and retains status on the left; install_page.dart hides the
 portable-run action. Other application names keep their existing UI.
 
 Build with the Windows script; its standalone output is
-artifacts/ProVDesk/ProVDesk.exe. Sign the payload before packaging and the final
-installer afterwards, then publish the matching sources with the binary.
+artifacts/ProVDesk/ProVDesk.exe. For a signed delivery, use the Windows CI
+pipeline above and publish the matching sources with the binary.
 
 ## Configured-server review (2026-11-05)
 
