@@ -77,8 +77,8 @@ alongside the binary. Update the About source URL to the matching release tag
 when publishing a release. A local review build must not be represented as a
 published-source release before those changes are publicly accessible.
 
-Upstream source baseline: 9f9585ce155a6558f0625eaf8fabfe8827c9a552 (RustDesk 1.5.0).
-Pinned hbb_common submodule: 229b904508364c8997aad0fb5af57effac859f60.
+Upstream source baseline: 95cca3f661f635b3cc85c04935fe8d96d8f432ef (RustDesk 1.5.3).
+Pinned hbb_common submodule: fae47e024dd83cef6aaecde0aa7d11731df11649.
 Review build toolchain: Rust 1.91.1, Flutter 3.24.5, Python 3.13, MSVC x64.
 
 

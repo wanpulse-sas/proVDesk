@@ -67,3 +67,5 @@ flutter/web/
 /diagnostics/
 /artifacts/
 /.ci-subst.json
+# Local git worktrees
+.worktrees/
